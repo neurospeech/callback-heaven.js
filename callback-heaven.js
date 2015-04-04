@@ -31,6 +31,8 @@ var CallbackHeaven = (function(){
 			if(/parent/i.test(i)) continue;
 			var v = tree[i];
 			if(v && v!==tree){
+				if( typeof v == 'string' || v.constructor == String || v instanceof String)
+					continue;
 				if(v.type !== undefined || v.length !== undefined){
 					if(!walk(v,f, tree))
 					{
@@ -59,7 +61,12 @@ var CallbackHeaven = (function(){
 			}
 			return true;
 		});
-		console.log(list);
+		
+		var ae = new AtomEnumerator(list);
+		while(ae.next()){
+			var item = ae.current();
+			replacer(item);
+		}
 	}
 
 	function CBHeaven(acorn){
