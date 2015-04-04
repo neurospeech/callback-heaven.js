@@ -44,6 +44,18 @@ Translated to
     }).invoke();
   
 
+$se - PhoneGap kind signature(successCallback,errorCallback) 
+------------------------------------------------------------
+
+    var r = $se( invokeProcedure(a,b)) ;
+    alert(r);
+    
+Translated to
+
+    invokePrcedure(a,b, function(r){
+        alert(r);
+    });
+
 Loop promises
 -------------
 
