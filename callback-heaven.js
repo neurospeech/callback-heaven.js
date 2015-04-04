@@ -43,23 +43,50 @@ CallbackHeaven.prototype = {
 		while(ae.next()){
 			var item = ae.current();
 			item = this.visit(item);
-			r.push(item);
+			if(item){
+				r.push(item);
+			}
 		}
 		return r.join(s || ',');
 	},
 	
 	expression: function(p){
-		return p.type + '\n' + JSON.stringify(p, null, 2);
+		//return p.type + '\n' + JSON.stringify(p);
+		return '';
+	},
+	
+	objectExpression: function(e){
+		var oldIndent = this.indent;
+		this.indent += '\t';
+		var plist = this.visitArray(e.properties, ',\n' + this.indent);
+		this.indent = oldIndent;
+		return "{" + plist + "}";
+	},
+	
+	property: function(e){
+		var key = this.visit(e.key);
+		var value = this.visit(e.value);
+		return key + ": " + value;
 	},
 	
 	expressionStatement: function(e){
 		var exp = e.expression;
 		exp = this.visit(exp);
-		return exp + ';\n';
+		return exp;
+	},
+	
+	returnStatement: function(e){
+		return "return " + this.visit(e.argument);
 	},
 	
 	identifier: function(e){
 		return e.name;
+	},
+	
+	whileStatement: function(e){
+		var test = this.visit(e.test);
+		var body = this.visit(e.body);
+		return "while(" + test + ")" + body;
 	},
 	
 	blockStatement: function(e){
@@ -69,7 +96,7 @@ CallbackHeaven.prototype = {
 		var body = this.program(e);
 		
 		this.indent = oldIndent;
-		return "{\n" + this.indent + '\t' + body + ";\n}";
+		return "{\n" + this.indent + '\t' + body + ";\n" + this.indent + "}";
 	},
 	
 	functionExpression: function(e){
@@ -77,6 +104,17 @@ CallbackHeaven.prototype = {
 		var params = this.visitArray(e.params, ', ');
 		var id = this.visit(e.id);
 		return "(function " + id + "("+ params +")" + body + ")";
+	},
+	
+	functionDeclaration: function(e){
+		var body = this.visit(e.body);
+		var params = this.visitArray(e.params, ', ');
+		var id = this.visit(e.id);
+		return "function " + id + "("+ params +")" + body ;
+	},
+	
+	thisExpression: function(e){
+		return "this";
 	},
 	
 	ifStatement: function(e){
@@ -91,9 +129,48 @@ CallbackHeaven.prototype = {
 		return left + e.operator + right;
 	},
 	
+	logicalExpression: function(e){
+		return this.binaryExpression(e);
+	},
+	
+	unaryExpression: function(e){
+		var op = e.operator;
+		var arg = this.visit(e.argument);
+		return op + arg;
+	},
+	
+	assignmentExpression: function(e){
+		var left = this.visit(e.left);
+		var right = this.visit(e.right);
+		return left + "=" + right;
+	},
+	
+	updateExpression: function(e){
+		var op = this.operator;
+		var exp = this.visit(e.argument);
+		return e.prefix ? op + exp : exp + op;
+	},
+	
+	arrayExpression: function(e){
+		var elist = this.visitArray(e.elements, ', ');
+		return "[" + elist + "]";
+	},
+	
+	newExpression: function(e){
+		var exp = this.callExpression(e);
+		return "new " + exp;
+	},
+	
 	variableDeclaration: function(e){
 		var d = this.visitArray(e.declarations,';\n' + this.indent);
 		return d;
+	},
+	
+	conditionalExpression: function(e){
+		var test= this.visit(e.test);
+		var left = this.visit(e.left);
+		var right = this.visit(e.right);
+		return test + "?" + left + ":" + right;
 	},
 	
 	variableDeclarator : function(e){
