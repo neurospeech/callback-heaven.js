@@ -68,6 +68,21 @@ var CallbackHeaven = (function(){
 			replacer(item);
 		}
 	}
+	
+	function findParent(tree, f){
+		if(!tree) return;
+		var p = f(tree);
+		if(p) return p;
+		return findParent(tree.parent,f);
+	}
+	
+	function replacePromise(tree){
+		var isLoop = findParent(tree, function(n){ 
+			return /WhileStatement/.test(n.type) || /ForInStatement/.test(n.type); 
+		});
+		if(isLoop)
+			throw new Error('Not supported in this version');
+	}
 
 	function CBHeaven(acorn){
 		this.parser = acorn;
@@ -77,8 +92,8 @@ var CallbackHeaven = (function(){
 	CBHeaven.prototype = {
 		convert: function(input){
 			var p = this.parser.parse(input);
-			prepareDom(p);
-			processMacro(p,'$ap');
+			//prepareDom(p);
+			//processMacro(p,'$ap', replacePromise);
 			return this.visit(p);
 		},
 
@@ -117,12 +132,56 @@ var CallbackHeaven = (function(){
 			this.indent = oldIndent;
 			return "{\n" + this.indent + "\t" + plist + "\n" + this.indent + "}";
 		},
+		
+		forStatement: function(e){
+			var init = this.visit(e.init);
+			var test = this.visit(e.test);
+			var update = this.visit(e.update);
+			var body = this.visit(e.body);
+			return "for(" + init + ", " + test + ", " + update + ")" + body;
+		},
 
 		forInStatement: function(e){
 			var left = this.visit(e.left);
 			var right = this.visit(e.right);
 			var body = this.visit(e.body);
 			return "for(" + left + " in " + right + ")" + body;
+		},
+
+		whileStatement: function(e){
+			var test = this.visit(e.test);
+			var body = this.visit(e.body);
+			return "while(" + test + ")" + body;
+		},
+		
+		doWhileStatement: function(e){
+			var body = this.visit(e.body);
+			var test = this.visit(e.test);
+			return "do" + body + "while(" + test + ")";
+		},
+
+		switchStatement: function(e){
+			var dis = this.visit(e.discriminant);
+			var oldIndent = this.indent;
+			this.indent += '\t';
+			var cases = this.visitArray(e.cases, ";\n" + this.indent);
+			this.indent = oldIndent;
+			return "switch(" + dis + "){\n" + this.indent  + cases + "}";
+		},
+		
+		switchCase: function(e){
+			var c = this.visitArray(e.consequent, ';\n' + this.indent );
+			var test = this.visit(e.test);
+			if(test){
+				test = "case " + test;
+			}else{
+				test = "default";
+			}
+			return test + ":\n\t" + this.indent + c;
+		},
+		
+		breakStatement: function(e){
+			return "break";
 		},
 
 		property: function(e){
@@ -145,11 +204,6 @@ var CallbackHeaven = (function(){
 			return e.name;
 		},
 
-		whileStatement: function(e){
-			var test = this.visit(e.test);
-			var body = this.visit(e.body);
-			return "while(" + test + ")" + body;
-		},
 
 		continueStatement: function(e){
 			return "continue";
@@ -278,6 +332,11 @@ var CallbackHeaven = (function(){
 			var arg = this.visit(e.param);
 			var body = this.visit(e.body);
 			return "catch (" + arg + ")" + body;
+		},
+		
+		throwStatement: function(e){
+			var arg = this.visit(e.argument);
+			return "throw " + arg;
 		},
 
 		program: function(e){
