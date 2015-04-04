@@ -16,6 +16,48 @@ if(!AtomEnumerator){
 	};
 }
 
+function walk(tree, f, name, parent){
+	if(tree.length !== undefined){
+		var ae =new AtomEnumerator(tree);
+		while(ae.next()){
+			var item = ae.current();
+			if(!walk(item,f,name,tree))
+				return false;
+		}
+		return true;
+	}
+	for(var i in tree){
+		if(/parent/i.test(i))
+			continue;
+		var v = tree[i];
+		if(v){
+			if(v.type !== undefined){
+				if(!walk(v,f,i,tree))
+				{
+					return false;
+				}
+			}
+		}
+	}
+	return f(tree.type,tree,parent,name);
+}
+
+function prepareDom(tree){
+	walk(tree,function(type,item,parent,name){
+		item.parent = parent;
+		return true;
+	});
+}
+
+function processMacro(tree, signature, replacer){
+	for(var i in tree){
+		var v = tree[i];
+		if(v && v.type){
+			processMacro(tree,signature,replacer);
+		}
+	}
+}
+
 function CallbackHeaven(acorn){
 	this.parser = acorn;
 	this.indent = '';
@@ -24,6 +66,7 @@ function CallbackHeaven(acorn){
 CallbackHeaven.prototype = {
 	convert: function(input){
 		var p = this.parser.parse(input);
+		prepareDom(p);
 		return this.visit(p);
 	},
 	
@@ -51,8 +94,8 @@ CallbackHeaven.prototype = {
 	},
 	
 	expression: function(p){
-		//return p.type + '\n' + JSON.stringify(p);
-		return '';
+		return p.type + '\n' + JSON.stringify(p);
+		//return '';
 	},
 	
 	objectExpression: function(e){
@@ -60,7 +103,14 @@ CallbackHeaven.prototype = {
 		this.indent += '\t';
 		var plist = this.visitArray(e.properties, ',\n' + this.indent);
 		this.indent = oldIndent;
-		return "{" + plist + "}";
+		return "{\n" + this.indent + "\t" + plist + "\n" + this.indent + "}";
+	},
+	
+	forInStatement: function(e){
+		var left = this.visit(e.left);
+		var right = this.visit(e.right);
+		var body = this.visit(e.body);
+		return "for(" + left + " in " + right + ")" + body;
 	},
 	
 	property: function(e){
@@ -87,6 +137,10 @@ CallbackHeaven.prototype = {
 		var test = this.visit(e.test);
 		var body = this.visit(e.body);
 		return "while(" + test + ")" + body;
+	},
+	
+	continueStatement: function(e){
+		return "continue";
 	},
 	
 	blockStatement: function(e){
@@ -120,13 +174,17 @@ CallbackHeaven.prototype = {
 	ifStatement: function(e){
 		var test = this.visit(e.test);
 		var c = this.visit(e.consequent);
-		return "if(" + test + ") " + c; 
+		var a = this.visit(e.alternate);
+		if(a){
+			a = "else" + a;
+		}
+		return "if(" + test + ") " + c + a; 
 	},
 	
 	binaryExpression: function(e){
 		var left = this.visit(e.left);
 		var right = this.visit(e.right);
-		return left + e.operator + right;
+		return left + " " +  e.operator + " " + right;
 	},
 	
 	logicalExpression: function(e){
@@ -136,17 +194,17 @@ CallbackHeaven.prototype = {
 	unaryExpression: function(e){
 		var op = e.operator;
 		var arg = this.visit(e.argument);
-		return op + arg;
+		return e.prefix ? op + arg : arg + op;
 	},
 	
 	assignmentExpression: function(e){
 		var left = this.visit(e.left);
 		var right = this.visit(e.right);
-		return left + "=" + right;
+		return left + " = " + right;
 	},
 	
 	updateExpression: function(e){
-		var op = this.operator;
+		var op = e.operator;
 		var exp = this.visit(e.argument);
 		return e.prefix ? op + exp : exp + op;
 	},
