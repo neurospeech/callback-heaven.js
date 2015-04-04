@@ -27,11 +27,11 @@ var CallbackHeaven = (function(){
 			return true;
 		}
 		for(var i in tree){
-			if(/parent/i.test(i))
-				continue;
+			if(!tree.hasOwnProperty(i)) continue;
+			if(/parent/i.test(i)) continue;
 			var v = tree[i];
-			if(v){
-				if(v.type !== undefined){
+			if(v && v!==tree){
+				if(v.type !== undefined || v.length !== undefined){
 					if(!walk(v,f, tree))
 					{
 						return false;
