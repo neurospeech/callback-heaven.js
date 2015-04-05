@@ -78,7 +78,10 @@ var CallbackHeaven = (function(){
 	
 	function replacePromise(tree){
 		var isLoop = findParent(tree, function(n){ 
-			return /WhileStatement/.test(n.type) || /ForInStatement/.test(n.type); 
+			return 	/WhileStatement/.test(n.type) || 
+							/ForInStatement/.test(n.type) ||
+							/ForStatement/.test(n.type) ||
+							/DoWhileStatement/.test(n.type); 
 		});
 		if(isLoop)
 			throw new Error('Not supported in this version');
