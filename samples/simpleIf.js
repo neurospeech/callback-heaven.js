@@ -17,14 +17,14 @@ function simpleIfResult(){
   $pif(this,function(p){
     p.add($.get('/a'));
   })
-  .thenIf(function(p,r1){
+  .continueIf(function(p,r1){
     return allSuccess(r1);
-  })
-  .thenTrue(function(p){
+  },function(p){
+    // true part
     a = 'a';
     this.update();
-  })
-  .thenFalse(function(p){
+  },function(p){
+    // false part..
     a = 'b';
     this.update();
   })
