@@ -13,8 +13,8 @@ function chainResult(){
     p.add($.get('/a'));
     p.add($.get('/b'));
   })
-  .then(function(p){
-    a = this.modify(this.process(p.result[0]), p.result[1]);
+  .then(function(p,r1,r2){
+    a = this.modify(this.process(r1), r2);
     console.log(a);
   });
 }

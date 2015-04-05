@@ -13,8 +13,8 @@ function simpleResult(){
     $ps(this, function(p){
       p.add($.get('/a'));
     })
-    .then(function(p){
-      this.a = p.result;
+    .then(function(p,r1){
+      this.a = r1;
       console.log(this.a);
     });
   }

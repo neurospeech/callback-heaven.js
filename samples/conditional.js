@@ -31,8 +31,8 @@ function c1Intermediate2(){
   $pif(this, function(p){
     p.add($.get(''));
   })
-  .thenIf(function(p){ 
-    return p.result;
+  .thenIf(function(p,r1){ 
+    return r1;
   })
   .thenTrue(function(p){
     if($p($.get('a'))){

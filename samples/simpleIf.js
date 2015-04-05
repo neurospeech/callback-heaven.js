@@ -17,8 +17,8 @@ function simpleIfResult(){
   $pif(this,function(p){
     p.add($.get('/a'));
   })
-  .thenIf(function(p){
-    return allSuccess(p.result);
+  .thenIf(function(p,r1){
+    return allSuccess(r1);
   })
   .thenTrue(function(p){
     a = 'a';
