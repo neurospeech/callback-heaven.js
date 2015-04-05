@@ -19,6 +19,7 @@ function c1Intermediate(){
     }else{
       a = $p($.get('c'));
     }
+    console.log(a);
   }
   else{
     a = $p($.get('d'));
@@ -28,20 +29,19 @@ function c1Intermediate(){
 
 function c1Intermediate2(){
   var a = null;
-  $pif(this, function(p){
+  return $pif(this, function(p){
     p.add($.get(''));
   })
-  .thenIf(function(p,r1){ 
+  .continueIf(function(p,r1){ 
     return r1;
-  })
-  .thenTrue(function(p){
+    }, function(p){
     if($p($.get('a'))){
       a = $p($.get('b'));
     }else{
       a = $p($.get('c'));
     }
-  })
-  .thenFalse(function(p){
+    console.log(a);
+  },function(p){
     a = $p($.get('d'));
   }).then(function(p){
     console.log(a);
@@ -49,5 +49,29 @@ function c1Intermediate2(){
 }
 
 function c1Result(){
-  
+  var a = null;
+  return $ps(this, function(p){
+    p.add($.get(''));
+  })
+  .continueIf(function(p,r1){ 
+    return r1;
+    }, function(p,r1){
+      p.add($ps(this,function(p){
+        p.add($.get('a'));
+      }).continueIf(function(p){
+        p.add($ps(this,$.get('b')).then(function(){
+          
+        }));
+      },function(p){
+        
+      },function(p){
+        
+      }).then(function(){
+        console.log(a);
+      }));
+    },function(p){
+    a = $p($.get('d'));
+  }).then(function(p){
+    console.log(a);
+  });
 }

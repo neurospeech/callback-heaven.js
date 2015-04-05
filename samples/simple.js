@@ -10,7 +10,7 @@ function simple(){
 function simpleResult(){
   if(true){
     this.a = null;
-    $ps(this, function(p){
+    return $ps(this, function(p){
       p.add($.get('/a'));
     })
     .then(function(p,r1){

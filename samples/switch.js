@@ -40,3 +40,16 @@ function simpleSwitchResult(a){
     console.log(b);
   });
 }
+
+
+function complexSwitch(a){
+  var a = null;
+  switch($p($.get('/a'))){
+    case "a":
+      console.log(a);
+      break;
+    case "b":
+      console.log(a);
+      break;
+  }
+}
