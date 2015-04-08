@@ -1,4 +1,4 @@
-var $p, $ps, $pif, $ploop, $pswitch, allSuccess;
+var $p, $ps, $pif, $ploop, $pswitch, allSuccess, promiseResult;
 
 function simpleSwitch(a){
   var b = null;
@@ -20,25 +20,45 @@ function simpleSwitch(a){
 
 function simpleSwitchResult(a){
   var b = null;
-  $ps(this,function(p){
-    switch(a){
-      case "a":
-        p.add($.get('/a'));
-        p.then(function(p1,r1){
-          b = r1;
-          console.log('case a' + b);
-        });
-        break;
-      case "b":
-        p.add($.get('/b'));
-        p.then(function(p1,r1){
-          b = r1;
-          console.log('case b' + b);
-        });
-    }
-  }).then(function(p,r1){
-    console.log(b);
-  });
+  return promiseResult(this,[
+      {
+        "switch": function(){
+          return a;
+        },
+        "cases":{
+          "a": [
+            { 
+              async: function(){
+                return $.get('/a');
+              },result: function(r){
+                b = r;
+              }
+            },
+            function(){
+              console.log('case a' + b);
+            }
+          ],
+          "b": [
+            {
+              async: function(){
+                return $.get('/b');
+              },
+              result: function(r){
+                b = r;
+              }
+            },
+            function(){
+              console.log('case b' + b);
+            }
+          ]
+        },
+        "default": function(){
+          b = null;
+        }
+      },function(){
+        console.log(b);
+      }
+    ]);
 }
 
 
@@ -52,4 +72,25 @@ function complexSwitch(a){
       console.log(a);
       break;
   }
+}
+
+function complexSwitchResult(){
+  var a = null;
+  return promiseResult(this,[
+    {
+      "switch":{
+        async: function(){
+          return $.get('/a');
+        }
+      },
+      "cases": {
+        "a":function(){
+          console.log(a);
+        },
+        "b": function(){
+          console.log(a);
+        }
+      }
+    }
+  ]);
 }

@@ -1,4 +1,4 @@
-var $p, $pif, $ploop, $pswitch, allSuccess;
+var $p, $pif, $ploop, $pswitch, allSuccess, promiseResult;
 
 function simpleIf(){
   var a = null;
@@ -13,22 +13,28 @@ function simpleIf(){
 }
 
 function simpleIfResult(){
-  var a = null;
-  $pif(this,function(p){
-    p.add($.get('/a'));
-  })
-  .continueIf(function(p,r1){
-    return allSuccess(r1);
-  },function(p){
-    // true part
-    a = 'a';
-    this.update();
-  },function(p){
-    // false part..
-    a = 'b';
-    this.update();
-  })
-  .then(function(p){
-    console.log(a);
-  });
+  var a;
+  return promiseResult(this,[
+    {
+      "if": {
+        async: function(){
+          return $.get('/a');
+        },
+        result: function(r){
+          return allSuccess(r);
+        }
+      },
+      "then": function(){
+        a = 'a';
+        this.update();
+      },
+      "else": function(){
+        a = 'b';
+        this.update();
+      }
+    },
+    function(){
+      console.log(a);
+    }
+  ]);
 }

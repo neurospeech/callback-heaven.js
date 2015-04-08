@@ -1,4 +1,4 @@
-var $p, $ps;
+var $p, $ps, promiseResult;
 
 function simple(){
   if(true){
@@ -8,14 +8,20 @@ function simple(){
 }
 
 function simpleResult(){
-  if(true){
-    this.a = null;
-    return $ps(this, function(p){
-      p.add($.get('/a'));
-    })
-    .then(function(p,r1){
-      this.a = r1;
-      console.log(this.a);
-    });
-  }
+  return promiseResult(this,
+  [
+    {
+      "if": function(){ return true;},
+      "then":[{
+        async: function(){
+          return $.get('/a');
+        },
+        result: function(r){
+          this.a = r;
+        }
+      },function(){
+        console.log(this.a);
+      }]
+    }
+  ]);
 }
