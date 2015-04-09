@@ -30,46 +30,27 @@ function c1Intermediate(){
 function c1Result(){
   var a = null;
   return promiseResult(this,[
-      {
-        "if": {
-          async: function() { 
-            return  $.get('');
-          },
-          result: function(r){
-            return isTrue(r);
-          }
-        },
-        "then":{
-          "if":{
-            async: function(){
-              return $.get('a');
+      [
+        "if", { 
+          test:["async",function() { return  $.get('');}, function(r){ return isTrue(r); }],
+          "then":
+          [
+            ["if",{ 
+              test:["async", function(){ return $.get('a'); }],
+              then: ["async", function(){ return $.get('b'); }, function(r) { a = r; }],
+              "else": ["async", function(){ return $.get('c'); }, function(r) { a = r; }]
+            }],
+            function(){
+              console.log(a);
             }
-          },
-          "then":{
-            async: function(){
-              return $.get('b');
-            },
-            result: function(r){
-              a = r;
-            }
-          },
-          "else":{
-            async: function(){
-              return $.get('c');
-            },
-            result: function(r){
-              a = r;
-            }
+          ],
+          "else":[
+              ["async", function() { return $.get('d'); }]
+            ]
           }
-        },
-        "else":{
-          async: function(){
-            return $.get('d');
-          },
-          result: function(r){
-            a = r;
-          }
-        }
+        ],
+      function(){
+        console.log(a);
       }
     ]);
 }
