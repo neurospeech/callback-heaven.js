@@ -26,6 +26,7 @@ name of instruction.
 #### Example
 
 code:
+
     var countries = $p($.get('/countries'));
     console.log(JSON.stringify(countries));
         
@@ -35,10 +36,12 @@ asyncVM code:
     return asyncVM(this,[
         ["async", 
             function(){ 
-                $.get('/countries'); }],
+                $.get('/countries'); },
+            function(v){
+                /* v is result of last operation */
+                countries = v;
+            }],
         function(v){
-            /* v is result of last operation */
-            countries = v;
             console.log(JSON.stringify(countries));
         }
     ]);
