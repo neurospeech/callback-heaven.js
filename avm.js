@@ -37,14 +37,23 @@ var vmCommands = {
       flist = [flist];
     }
 
-    var fa = s[2];
-    if(fa){
-      vm.push(fa);
-    }
     
     var ae = new AtomEnumerator(flist);
     var pl = [];
     
+    var fa = s[2];
+    if(!fa){
+      fa = function(r){
+        return r;
+      };
+    }
+    
+    vm.push([function(){
+     var ra = pl.map(function(ri){ return ri.r; }); 
+     var v = fa.apply(vm.self,ra);
+     vm.value(v);
+    }]);
+
     function next(){
       var a = new AtomEnumerator(pl);
       var failed = false;
@@ -56,11 +65,9 @@ var vmCommands = {
         if(/failed/i.test(i.state)){
           failed = true;
         }
-        var r = i.r;
-        vm.stack.push(r);
       }
       if(!failed){
-        vm.invoke();
+        vm.run();
       }
     }
     
@@ -88,24 +95,22 @@ var vmCommands = {
       var p = f.apply(vm.self,vm);
       pl.push(wirePromise(p));
     }
+    
+    vm.stop = true;
   },
   "if": function(vm, s){
     s = s[1];
     vm.push(function(){
-      console.log("then");
       if(vm.value()){
         vm.push(s.then);
-        vm.invoke();
       }else{
         var e = s["else"];
         if(e){
           vm.push(e);
-          vm.invoke();
         }
       }
     });
     vm.push(s.test);
-    vm.invoke();
   },
   "switch": function(vm,s){
     s = s[1];
@@ -123,7 +128,16 @@ var vmCommands = {
       }
     });
     vm.push(s.test);
-    vm.invoke();
+  },
+  "for": function(vm,s){
+    s = s[1];
+    function runFor(){
+      var r = vm.value();
+      if(r){
+        vm.push([s.body,s.update, s.test, runFor]);
+      }
+    };
+    vm.push([s.init, s.test, runFor]);
   }
 };
 
@@ -131,10 +145,9 @@ function asyncVM(thisArg,s){
   this.self = thisArg;
   this.failQ = [];
   this.thenQ = [];
-  this.stack = [];
   this.statements = s;
   this.callStack = [];
-  
+  this.stop = false;
   
   var self = this;
   this.success = function(r){
@@ -146,11 +159,10 @@ function asyncVM(thisArg,s){
 }
 
 asyncVM.prototype = {
-  value: function(){
-    var s = this.stack;
-    if(s.length){
-      return s[s.length-1];
-    }
+  value: function(v){
+    if(v === undefined)
+      return this._value;
+    this._value = v;
   },
   
   then: function(f){
@@ -160,42 +172,36 @@ asyncVM.prototype = {
     this.failQ.push(f);
   },
   onSuccess: function(r){
-    this.stack.push(r);
-    this.invoke();
+    this.value(r);
+    this.run();
   },
   onFailed: function(r){
-    this.stack.push(r);
+    this.value(r);
   },
   push: function(s){
     this.callStack.push({ 
-      statements: this.statements, 
-      stack: this.stack, 
-      thenQ: this.thenQ,
-      failQ: this.failQ
+      statements: this.statements
     });
-    this.stack = [];
-    this.failQ = [];
-    this.thenQ = [];
     if(!Array.isArray(s)) s = [s];
     this.statements = s;
+  },
+  run: function(s){
+    if(s!==undefined){
+      this.push(s);
+    }
+    this.stop = false;
+    this.invoke();
   },
   invoke: function(){
     if(this.statements.length==0){
       if(this.callStack.length){
         var s = this.callStack.pop();
         this.statements = s.statements;
-        
-        var lastValue = this.value();
-        
-        this.stack = s.stack;
-        this.stack.push(lastValue);
-        this.thenQ = s.thenQ;
-        this.failQ = s.failQ;
         this.invoke();
         return;
       }else{
         // done? call then...
-        var v = this.stack.length ? this.stack.pop() : undefined;
+        var v = this.value();
         var ae =new AtomEnumerator(this.thenQ);
         while(ae.next()){
           var f = ae.current();
@@ -206,8 +212,9 @@ asyncVM.prototype = {
     }
     var f = this.statements[0];
     if(isString(f)){
-      this.invokeStep(this.statements);
-      this.statements.length = 0;
+      var s = this.statements;
+      this.statements = [];
+      this.invokeStep(s);
     }else{
       if(Array.isArray(f)){
         this.statements.shift();
@@ -220,7 +227,10 @@ asyncVM.prototype = {
   },
   invokeStep: function(s){
     if(isFunction(s)){
-      var r = s.apply(this.self,this.stack);
+      var r = s.call(this.self,this.value());
+      if(r!==undefined){
+        this.value(r);
+      }
     }else{
       var a = s[0];
       var af = vmCommands[a];
@@ -231,6 +241,9 @@ asyncVM.prototype = {
         console.log('executing ' + a);        
       }
       af(this,s);
+    }
+    if(!this.stop){
+      this.invoke();
     }
   }
 };
