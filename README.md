@@ -1,90 +1,91 @@
 # Callback Heaven
-Macros for JavaScript to write shorter syntax and expand inline expressions
+Callbacks are very difficult to write and program. So I decided to create asyncVM, 
+an asynchronous vm that accepts objects and arrays as instructions which may or 
+may not be async in nature. 
 
-$p - promise
-------------
+## Callback Converter 
+Callback converts $p() functions to Async AVM instructions, which are 
+executed in async timeline explained below. This conversion happens automatically
+however you can still use avm independently of this converter and create your own
+set of instructions.
 
-    var r = $p($.get('/fetchurl/'));
-    console.log(r);
-  
-Translated to
+## AVM Instructions
+AVM Instruction is an either an array or a function that will be executed as per 
+asynchronous timeline. async timeline is different then cpu timeline, cpu timeline
+executes instructions one after another, async timeline stops vm till completion of async
+instruction. This is the reason, each statement is an array with a prefix, specifying 
+name of instruction.
 
-    $.get('/fetchurl/').then( function(r) {
-      console.log(r);
-    });
-  
-Try catch
+### async , only waitable instruction
+    ["async", asyncFunctions, resultProcessor]
+    asyncFunctions: it can be function or array of function 
+        that will return a promise.
+    resultProcessor: a function that will be called on result of
+        promise return before next instruction
+        
+#### Example
 
-    try{
-      var r = $p($.get('/fetchurl'));
-      alert(r);
-    }catch(e){
-      console.error(e);
+code:
+    var countries = $p($.get('/countries'));
+    console.log(JSON.stringify(countries));
+        
+asyncVM code:
+    
+    var countries;
+    return asyncVM(this,[
+        ["async", 
+            function(){ 
+                $.get('/countries'); }],
+        function(v){
+            /* v is result of last operation */
+            countries = v;
+            console.log(JSON.stringify(countries));
+        }
+    ]);
+    
+Above example, executes an async instruction, which gets a promise to load
+url '/countries', and it will halt till it receives response. Then it will 
+execute second function in async array.
+
+Nested async example.
+
+code:
+    
+    var countries = $p($.get('/countries'));
+    var states = {};
+    for(var i = 0; i < countries.length; i++){
+        var c = countries[i];
+        var s = $p($.get('/countries/' + c.id));
+        states[c.id] = s;
     }
-
-Translated to
+    console.log(JSON.stringify(states));
     
-    $.get('/fetchurl').then( function(r){
-        alert(r);
-    }).failed(function(e){
-        console.log(e);
-    });
-    
+asyncVM code:
 
-$ap - AtomPromise
------------------
-
-    var r = $ap(AtomPromise.json('/fetchurl/'));
-    console.log(r);
-  
-Translated to
-
-    AtomPromise.json('/fetchurl/').then( function(r) {
-      console.log(r);
-    }).invoke();
-  
-
-$se - PhoneGap kind signature(successCallback,errorCallback) 
-------------------------------------------------------------
-
-    var r = $se( invokeProcedure(a,b)) ;
-    alert(r);
-    
-Translated to
-
-    invokePrcedure(a,b, function(r){
-        alert(r);
-    });
-
-Loop promises
--------------
-
-Multiple promises in loop are more complicated, as they involve declaring extra array to store status of each promise. However, it is still expanded correctly.
-
-    var rl = [];
-    for(var i=0;i<n;i++){
-        rl[i] = $p($.get('/url/' + i));
-    }
-    
-    consol.log(JSON.stringify(rl));
-    
-Translated to 
-    
-    var rl = [];
-    var rp = [];
-    
-    for(var i=0;i<n;i++){
-        var p = $.get('/url/' + i);
-        p.then(function(r){
-            rl[i] = r;
-            var px = rp.find( function(x) { return x.p == p });
-            px.done = true;
-            for(var pi=0;pi<rp.length;pi++){
-                var pix = rp[pi];
-                if(!pix.done) return;
-            }
-            
-            console.log(JSON.stringify(rl));
-        });
-        rp.push({done:false, p:p});
-    }
+    var countries;
+    var states;
+    var i;
+    var c;
+    var s;
+    return asyncVM(this,[
+        ["async", function() { return $.get('/countries'); }],
+        ["for", {
+            init: function() { i = 0; },
+            test: function() { i < countries.length; },
+            body: [
+                function(){
+                    c = countries[i];
+                },
+                ["async", 
+                    function(){ return $.get('/countries/' + c.id); },
+                    function(v){ s = v; }],
+                function(){
+                    states[c.id] = s;
+                }
+            ],
+            update: function() { i++; }
+        }],
+        function(){
+            console.log(JSON.stringify(states));
+        }
+    ]);
