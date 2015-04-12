@@ -1,8 +1,33 @@
-var AtomEnumerator;
+var asyncInvoke = (function(){
+	if(!AtomEnumerator){
+		var AtomEnumerator = function(a){
+			this.array = a;
+			this.index = -1;
+		};
+
+		AtomEnumerator.prototype = {
+			next: function(){
+				this.index++;
+				return this.index < this.array.length;
+			},
+			current: function(){
+				return this.array[this.index];
+			},
+			currentIndex: function(){
+			  return this.index;
+			}
+		};
+	}
 
 function isFunction(functionToCheck) {
  var getType = {};
  return functionToCheck && getType.toString.call(functionToCheck) === '[object Function]';
+}
+
+function isString(stringToCheck){
+  if(stringToCheck.constructor == String)
+    return true;
+  return typeof stringToCheck == 'string' || stringToCheck instanceof String;
 }
 
 var vmCommands = {
@@ -67,15 +92,20 @@ var vmCommands = {
   "if": function(vm, s){
     s = s[1];
     vm.push(function(){
+      console.log("then");
       if(vm.value()){
         vm.push(s.then);
+        vm.invoke();
       }else{
         var e = s["else"];
         if(e){
           vm.push(e);
+          vm.invoke();
         }
       }
     });
+    vm.push(s.test);
+    vm.invoke();
   },
   "switch": function(vm,s){
     s = s[1];
@@ -92,6 +122,8 @@ var vmCommands = {
         }
       }
     });
+    vm.push(s.test);
+    vm.invoke();
   }
 };
 
@@ -100,7 +132,7 @@ function asyncVM(thisArg,s){
   this.failQ = [];
   this.thenQ = [];
   this.stack = [];
-  this.statements = [];
+  this.statements = s;
   this.callStack = [];
   
   
@@ -172,32 +204,43 @@ asyncVM.prototype = {
       }
       return;
     }
-    
-    this.invokeStep( this.statements.shift() );   
+    var f = this.statements[0];
+    if(isString(f)){
+      this.invokeStep(this.statements);
+      this.statements.length = 0;
+    }else{
+      if(Array.isArray(f)){
+        this.statements.shift();
+        this.push(f);
+        this.invoke();
+      }else{
+        this.invokeStep( this.statements.shift() );   
+      }
+    }
   },
   invokeStep: function(s){
     if(isFunction(s)){
       var r = s.apply(this.self,this.stack);
-      this.stack.push(r);
     }else{
       var a = s[0];
-      if(Array.isArray(a)){
-        this.push();
-        this.invokeStep(a);
-        return;
-      }
       var af = vmCommands[a];
-      if(!af)
+      if(!af){
         throw new Error("No vm command found for " + a);
+      }
+      else{
+        console.log('executing ' + a);        
+      }
       af(this,s);
     }
   }
 };
 
-function asyncInvoke(thisArg, statements){
+return function asyncInvoke(thisArg, statements){
   var avm = new asyncVM(thisArg,statements);
   setTimeout(function(){
     avm.invoke();
   },1);
   return avm;
-}
+};
+
+})();
