@@ -1,4 +1,12 @@
 var CallbackHeaven = (function(){
+	
+	function isString(stringToCheck){
+	  if(stringToCheck.constructor == String)
+	    return true;
+	  return typeof stringToCheck == 'string' || stringToCheck instanceof String;
+	}
+	
+	
 	if(!AtomEnumerator){
 		var AtomEnumerator = function(a){
 			this.array = a;
@@ -12,6 +20,9 @@ var CallbackHeaven = (function(){
 			},
 			current: function(){
 				return this.array[this.index];
+			},
+			currentIndex: function(){
+			  return this.index;
 			}
 		};
 	}
@@ -28,10 +39,10 @@ var CallbackHeaven = (function(){
 		}
 		for(var i in tree){
 			if(!tree.hasOwnProperty(i)) continue;
-			if(/parent/i.test(i)) continue;
+			if(/^(parent|tree)$/i.test(i)) continue;
 			var v = tree[i];
 			if(v && v!==tree){
-				if( typeof v == 'string' || v.constructor == String || v instanceof String)
+				if(isString(v))
 					continue;
 				if(v.type !== undefined || v.length !== undefined){
 					if(!walk(v,f, tree))
@@ -47,6 +58,7 @@ var CallbackHeaven = (function(){
 	function prepareDom(tree){
 		walk(tree,function(item,parent){
 			item.parent = parent;
+			item.tree = tree;
 			return true;
 		});
 	}
@@ -77,27 +89,19 @@ var CallbackHeaven = (function(){
 	}
 	
 	function replacePromise(tree){
-		var isLoop = findParent(tree, function(n){ 
-			return 	/WhileStatement/.test(n.type) || 
-							/ForInStatement/.test(n.type) ||
-							/ForStatement/.test(n.type) ||
-							/DoWhileStatement/.test(n.type); 
-		});
-		if(isLoop)
-			throw new Error('Not supported in this version');
+		//console.log(tree.type);
 	}
 
-	function CBHeaven(acorn){
-		this.parser = acorn;
+	function CBHeaven(tree){
+		this.tree = tree;
 		this.indent = '';
 	}
 
 	CBHeaven.prototype = {
 		convert: function(input){
-			var p = this.parser.parse(input);
-			//prepareDom(p);
-			//processMacro(p,'$ap', replacePromise);
-			return this.visit(p);
+			prepareDom(this.tree);
+			processMacro(this.tree,'$p', replacePromise);
+			return this.visit(this.tree);
 		},
 
 		visit: function(p){
