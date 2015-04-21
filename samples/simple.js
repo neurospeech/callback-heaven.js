@@ -2,7 +2,7 @@ var $p, $ps, promiseResult;
 
 function simple(c){
   if(c){
-    this.a = $p( $.get('/a') );
+    this.a = $p( $p( $.get('/a') ) );
     console.log(this.a);
   }
 }

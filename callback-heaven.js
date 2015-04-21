@@ -27,70 +27,6 @@ var CallbackHeaven = (function(){
 		};
 	}
 
-	function walk(tree, f, parent){
-		if(tree.length !== undefined){
-			var ae =new AtomEnumerator(tree);
-			while(ae.next()){
-				var item = ae.current();
-				if(!walk(item,f, tree))
-					return false;
-			}
-			return true;
-		}
-		for(var i in tree){
-			if(!tree.hasOwnProperty(i)) continue;
-			if(/^(parent|tree)$/i.test(i)) continue;
-			var v = tree[i];
-			if(v && v!==tree){
-				if(isString(v))
-					continue;
-				if(v.type !== undefined || v.length !== undefined){
-					if(!walk(v,f, tree))
-					{
-						return false;
-					}
-				}
-			}
-		}
-		return f(tree,parent);
-	}
-
-	function prepareDom(tree){
-		walk(tree,function(item,parent){
-			item.parent = parent;
-			item.tree = tree;
-			return true;
-		});
-	}
-
-	function processMacro(tree, signature, replacer){
-		var list = [];
-		walk(tree, function(item){
-			if(item.type == 'Identifier'){
-				if(item.name == signature && item.parent.type == 'CallExpression'){
-					list.push(item.parent);
-				}
-			}
-			return true;
-		});
-		
-		var ae = new AtomEnumerator(list);
-		while(ae.next()){
-			var item = ae.current();
-			replacer(item);
-		}
-	}
-	
-	function findParent(tree, f){
-		if(!tree) return;
-		var p = f(tree);
-		if(p) return p;
-		return findParent(tree.parent,f);
-	}
-	
-	function replacePromise(tree){
-		//console.log(tree.type);
-	}
 
 	function CBHeaven(tree){
 		this.tree = tree;
@@ -99,8 +35,6 @@ var CallbackHeaven = (function(){
 
 	CBHeaven.prototype = {
 		convert: function(input){
-			prepareDom(this.tree);
-			processMacro(this.tree,'$p', replacePromise);
 			return this.visit(this.tree);
 		},
 
