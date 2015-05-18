@@ -1,0 +1,34 @@
+{
+  "name": "callback-heaven",
+  "version": "1.0.4",
+  "description": "Transcode callbacks into synchronous code",
+  "homepage": "https://github.com/neurospeech/callback-heaven.js",
+  "main": "dist/callback-heaven.js",
+  "bin": {
+    "callback-heaven": "build.js"
+  },
+  "directories": {
+    "test": "tests"
+  },
+  "dependencies": {
+    "acorn": "^1.0.3"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/neurospeech/callback-heaven.js.git"
+  },
+  "keywords": [
+    "callback",
+    "heaven"
+  ],
+  "author": "Akash Kava",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/neurospeech/callback-heaven.js/issues"
+  },
+  "homepage": "https://github.com/neurospeech/callback-heaven.js"
+}
