@@ -22,7 +22,8 @@ To run generated code, you will need avm.
     
 ## How to run
 
-Generated output script will refer "avm" , which is available from https://github.com/neurospeech/avm.js or 
+Generated output script will refer "avm" , which is available from 
+https://github.com/neurospeech/avm.js or 
 
     npm install avmjs
     
@@ -41,49 +42,48 @@ Generated output script will refer "avm" , which is available from https://githu
 
 Above code gets translated into following code automatically.
 
-    function testVM(){                                                                                                  
-        var country;                                                                                                    
-        var i;                                                                                            
-        var countries;                                                                              
-        return avm(this, [[["async",                                                                    
-            [(function (){                                                        
+    function testVM(){
+        var country;
+        var i;
+        var countries;
+        return avm(this, [[["async",
+            [(function (){
                 return $.get('/countries');
-            })],                                                                  
-            function (__v1){                                                         
+            })],
+            function (__v1){
                 countries = __v1;
-            }],                                                                                   
-            ["for",                                                                                 
-                {                                                     
-                    "init": (function (){                                                        
+            }],
+            ["for",
+                {
+                    "init": (function (){
                         return i = 0;
-                    }),                                                     
-                    "test": (function (){                                      
+                    }),
+                    "test": (function (){
                         return i < countries.length;
-                    }),                                                   
-                    "update": (function (){                                                       
-                        return i++;                                                              
-                    }),                                                                 
-                    "body": {                                                    
-                        [(function (){                           
+                    }),
+                    "update": (function (){
+                        return i++;
+                    }),
+                    "body": {
+                        [(function (){
                             country = countries[i];
-                        }),                                                 
-                        ["async",                                    
+                        }),
+                        ["async",
                             [(function (){
                                 return $.get('/countries/' + country.code);
-                            })],                                  
-                            function (__v1){                    
+                            })],
+                            function (__v1){
                                 country.states = __v1;
-                            }]                                                         
-                        ]                                                                 
-                        ;                                                                         
-                    }                                                                                
-                }]                                                                                         
-            ,                                                                             
-            (function (){                                           
+                            }]
+                        ]
+                    }
+                }]
+            ,
+            (function (){  
                     console.log(JSON.stringify(countries));
-            })]                                                                                                 
-        ]                                                                                                        
-        );                                                                                                              
+            })]
+        ] 
+        ); 
     }
     
 This generated code runs inside "avm" asynchronous virtual machine, which takes care of asynchronous logic and gives you a promise that will contain the last successful result.
