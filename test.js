@@ -22,8 +22,8 @@ var inputScript = fs.readFileSync(input);
 var tree = acorn.parse(inputScript);
 
 var a = new ast(tree);
-a.process();
+tree = a.process();
 
-var cbh = new CallbackHeaven(a.tree);
+var cbh = new CallbackHeaven(tree);
 console.log(cbh.convert());
 

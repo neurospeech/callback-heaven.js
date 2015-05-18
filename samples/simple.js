@@ -1,22 +1,16 @@
-var $p, $ps, promiseResult;
+var $wait, $ps, promiseResult;
 
 function simple(c){
-  if(c){
-    this.a = $p( $p( $.get('/a') ) );
+    var a = null;
+  if($wait( $.get('/a') )){
+    this.a = $wait($.get('/b'));
     console.log(this.a);
   }
 }
 
-function simpleResult(c){
-  return promiseResult(this,[
-    ["if", {
-      test: function() { return c;},
-      then: [
-        ["async", function(){ return $.get('/a'); } , function(r){ this.a = r;  }],
-        function(){
-          console.log(this.a);
-        }
-      ]
-    }]
-  ]);
+function chain(){
+  var a = this.modify(
+    this.proces( $wait( $.get('/a') )),
+    $wait( $.get('/b') ));
+  console.log(a);
 }

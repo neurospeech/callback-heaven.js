@@ -28,60 +28,39 @@ var ast = (function(){
 	}
 	
 	
-	function walk(tree, f, parent){
+	function walk(tree, f, parent, name){
 		if(tree.length !== undefined){
 			var ae =new AtomEnumerator(tree);
 			while(ae.next()){
-				var item = ae.current();
-				if(!walk(item,f, tree))
-					return false;
+				walk(ae.current(),f, tree, ae.currentIndex());
 			}
-			return true;
+			return;
 		}
 		for(var i in tree){
 			if(!tree.hasOwnProperty(i)) continue;
-			if(/^(parent|tree)$/i.test(i)) continue;
+			if(/^(parent|parentfield|tree)$/i.test(i)) continue;
 			var v = tree[i];
 			if(v && v!==tree){
 				if(isString(v))
 					continue;
 				if(v.type !== undefined || v.length !== undefined){
-					if(!walk(v,f, tree))
-					{
-						return false;
-					}
+					walk(v,f, tree,i);
 				}
 			}
 		}
-		return f(tree,parent);
+		f(tree,parent, name);
 	}
 
-	function prepareDom(tree){
-		walk(tree,function(item,parent){
+	function prepareDom(node, tree){
+		walk(node,function(item,parent,name){
 			item.parent = parent;
-			item.tree = tree;
-			return true;
+			item.parentField = name;
+			if(tree){
+			  item.tree = tree;
+			}
 		});
 	}
 
-	function processMacro(tree, signature, replacer){
-		var list = [];
-		walk(tree, function(item){
-			if(item.type == 'Identifier'){
-				if(item.name == signature && item.parent.type == 'CallExpression'){
-					list.push(item.parent);
-				}
-			}
-			return true;
-		});
-		
-		var ae = new AtomEnumerator(list);
-		while(ae.next()){
-			var item = ae.current();
-			replacer(item);
-		}
-	}
-	
 	function findParent(tree, f){
 		if(!tree) return;
 		var p = f(tree);
@@ -93,46 +72,432 @@ var ast = (function(){
 	function isCallExpression(signature){
 		return function(item){
 				if(item.type == 'Identifier'){
-					if(item.name == '$p' && item.parent.type == 'CallExpression'){
+					if(item.name == signature && item.parent.type == 'CallExpression'){
 						return true;
 					}
 				}
 				return false;
 		};
 	}
+	
+	var isPromise = isCallExpression('$wait');
+	
+	function findParentType(p, rg){
+	  
+	  return findParent(p, function(e){
+	    return rg.test(e.type);
+	  });
+	  
+	}
+
+	function findParentTypeNot(p, rg){
+	  
+	  return findParent(p, function(e){
+	    return !rg.test(e.type);
+	  });
+	  
+	}
+	function hasPromise(p){
+		var list = [];
+		walk(p, function(item){
+			if(item.isPromise || isPromise(item)){
+				list.push(item);
+			}
+		});
+		return list.length ? list : null;
+	}
 
 	function AST(tree){
 		this.tree = tree;
-	};  
+	}  
 	
 	AST.prototype = {
 		process: function(){
+		  var item;
+		  var p;
 			var tree = this.tree;
-			prepareDom(this.tree);
-			var list = [];
+			prepareDom(this.tree, this.tree);
+			var list = hasPromise(tree);
 			
-			var isPromise = isCallExpression("$p");
-			
-			walk(tree, function(item){
-				if(isPromise(item)){
-					list.push(item);
-				}
-				return true;
-			});
+			if(!list){
+				return tree;
+			}
 			
 			console.log('promises found ' + list.length);
 			
-			var recursive = list.filter(function(t){
-				return findParent(t, function(a){
-					return isPromise(a);
-				});
-			});
-			
-			if(recursive.length>0){
-				throw new Error('Recursive calls not supported');
+			var ae = new AtomEnumerator(list);
+			while(ae.next()){
+				item = ae.current();
+				item.isPromise = true;
+				p = item.parent;
+				while(p){
+				  p.hasPromise = true;
+				  p = p.parent;
+				}
 			}
 			
-		}
+			ae = new AtomEnumerator(list);
+			while(ae.next()){
+			  item = ae.current();
+			  p = item.parent;
+			  while(p){
+			    if(p.isPromise)
+			      throw new Error('Recursive calls not supported');
+			    p = p.parent;
+			  }
+			}
+			
+			return this.visit(tree);
+			
+		},
+		
+    visit: function(e){
+      if(!e)
+        return e;
+      var type = e.type;
+      if(type){
+        type = type.substr(0,1).toLowerCase() + type.substr(1);
+        var visitor = this[type] || this.expression;
+        return visitor.call(this,e);
+      }
+      if(e.length){
+        var ae = new AtomEnumerator(e);
+        var list = [];
+        while(ae.next()){
+          var item = ae.current();
+          list.push(this.visit(item));
+        }
+        return list;
+      }
+      return e;
+    },
+    
+    expression: function(e){
+      //console.log('default expression ' + e.type);
+      for(var i in e){
+        if(/parent|tree/i.test(i))
+          continue;
+        var v = e[i];
+        if(!v)
+          continue;
+        if(isString(v))
+          continue;
+        e[i] = this.visit(v);
+      }
+      return e;
+    },
+    
+    expressionStatement: function(e){
+    	
+    	return this.transformPromise(e);
+
+    },
+    
+    callExpression: function(e){
+    	return this.transformPromise(e);
+    },
+    
+    assignmentExpression: function(e){
+    	return this.transformPromise(e);
+    },
+   
+    
+    transformPromise: function(e){
+    	var list = [];
+    	walk(e,function(ex){
+    		if(ex.isPromise){
+    			list.push(ex);
+    		}
+    	});
+    	
+    	if(!list.length)
+				return e;
+				
+  		var s = this.createAsyncStatement("async",null);
+			var sa = [];
+			s.elements.push({
+				type: 'arrayExpression',
+				elements:sa
+			});
+    	var vars = [];
+    	var ae =new AtomEnumerator(list);
+    	while(ae.next()){
+    		var p = ae.current();
+    		var invoke = p.parent.arguments[0];
+    		sa.push(this.toFunction(invoke));
+    		p = p.parent;
+    		var f = p.parentField;
+    		p = p.parent;
+    		if(!/statement/i.test(p.type)){
+	    		var v = "__v" + (vars.length+1);
+	    		vars.push(v);
+	    		p[f] = {
+	    			type: 'identifier',
+	    			name: v
+	    		};
+    		}
+    	}
+    	
+    	if(vars.length){
+	    	var rf = {
+	    		type: 'functionDeclaration',
+	    		params: vars.map(function(i){
+	    			return { type: 'literal', raw: i };
+	    		}),
+	    		body:{
+	    			type: 'blockStatement',
+	    			body:[e]
+	    		}
+	    	};
+	    	
+	    	s.elements.push(rf);
+    	}
+    	//debugger;
+    	return s;
+    },
+    
+		
+		functionExpression: function(e){
+			var t = e.type;
+			e = this.functionDeclaration(e);
+			e.type = t;
+			return e;
+		},
+
+		functionDeclaration: function(e){
+			
+			if(!hasPromise(e.body)){
+				return e;
+			}
+			
+			// remove all variables...
+			var vars = [];
+			walk(e, function(t,p){
+			  if(/variableDeclarator$/i.test(t.type)){
+			    vars.push({
+			      type: 'variableDeclarator',
+			      id: {
+			      	type: 'identifier',
+			      	name: t.id.name
+			      }
+			    });
+			    if(!t.init){
+			      var i = p.indexOf(t);
+			      p.splice(i,1);
+			    }else{
+			      t.type = 'assignmentExpression';
+			      t.left = {
+			        type: 'identifier',
+			        name: t.id.name
+			      };
+			      t.right = t.init;
+			      t.right.parent = t;
+			      t.right.parentField = "right";
+			      delete t.init;
+			    }
+			  }
+			});
+
+			var body = this.visit(e.body);
+			
+			
+			e.body = {
+			  type:'blockStatement',
+			  body:[
+			    {
+  					type: 'returnStatement',
+  					argument: {
+  						type: 'callExpression',
+  						callee:{
+  							type: 'identifier',
+  							name: 'avm'
+  						},
+  						arguments:[
+  							{
+  								type: 'thisExpression',
+  						},
+  							{
+  								type: 'arrayExpression',
+  								elements: body.body
+  								
+  							}
+  						]
+  					}
+  				}
+				]
+			  
+			};				
+
+			var ae = new AtomEnumerator(vars);
+			while(ae.next()){
+			  var item = ae.current();
+			  e.body.body.unshift(item);
+			}
+			
+			return e;
+		},
+		
+		toFunction: function(e, assign, field){
+			
+			var stmt = {
+				type: 'returnStatement',
+				argument: e
+			};
+			
+			var r = {
+				type:'functionExpression',
+				body: { type: 'blockStatement',
+				body:[stmt]
+				}
+			};
+			if(assign){
+				r.params = [{ type: 'literal', raw: '___v' }];
+				assign[field] = {
+						type: 'identifier',
+						name: '___v'
+				};
+			}
+			return r;
+		},
+		
+		toAsync: function(e){
+			e.type = 'arrayExpression';
+			delete e.callee;
+			var arg = e.arguments[0];
+			e.arguments.unshift({
+				type: 'literal',
+				raw: 'async'
+			});
+			
+			e.arguments[1] = this.toFunction(arg);
+			return e;
+		},
+		
+		createFunction: function(statementArray){
+		  var s = {
+		    type: 'functionExpression',
+		    id: '',
+		    body:{
+		      type: 'blockStatement',
+		      body:[]
+		    }
+		  };
+		  s.statements = s.body.body;
+		  if(statementArray) statementArray.push(s);
+		  return s;
+		},
+		
+		createAsyncStatement: function(name,props, func){
+			
+			var s = {
+				type: 'arrayExpression',
+				elements:[
+					{	
+						type: 'literal',
+						raw: '"' + name + '"'
+					}
+				]
+			};
+
+			if(props){
+				var objExp = {
+					type: 'objectExpression',
+					properties:[]
+				};
+				
+				for(var i in props){
+					if(props.hasOwnProperty(i)){
+						var v = props[i];
+						if(v){
+							objExp.properties.push({
+								type: 'property',
+								key: { type: 'literal', raw: '"' + i + '"' },
+								value: v
+							});
+						}
+					}
+				}
+				
+				s.elements.push(objExp);
+			}
+			
+			if(func){
+				func = this.toFunction(func);
+				s.elements.push(func);
+			}
+			
+			//debugger;
+			return s;
+		},
+		
+		ifStatement: function(e){
+			var testPromise = false;
+			var consequentPromise = false;
+			var alternatePromise = false;
+			if(hasPromise(e.test)){
+				testPromise = true;
+				e.test = this.transformPromise(e.test);
+			}else{
+				e.test = this.toFunction(e.test);
+			}
+			if(hasPromise(e.consequent)){
+				consequentPromise = true;
+				e.consequent = this.visit(e.consequent);
+			}else{
+				e.consequent = this.toFunction(e.consequent);
+			}
+			if(e.alternate){
+				if(hasPromise(e.alternate)){
+					e.alternate =  this.visit(e.alternate);
+				}else{
+					e.alternate = this.toFunction(e.alternate);
+				}
+			}
+			
+			if(!(testPromise || consequentPromise || alternatePromise))
+				return e;
+			
+			return this.createAsyncStatement("if",{
+				test: e.test,
+				then: e.consequent,
+				"else": e.alternate
+			});
+		},
+		
+		blockStatement: function(e){
+		  if(!hasPromise(e))
+		    return e;
+		  var list = e.body;
+		  
+		  e.body = [{
+		    type: 'arrayExpression',
+		    elements:[]
+		  }];
+		  
+		  var body = e.body[0].elements;
+		  
+		  var current = null;
+		  
+
+		  var ae = new AtomEnumerator(list);
+		  while(ae.next()){
+		    var s = ae.current();
+		    if(!hasPromise(s)){
+		      if(!current){
+		        current = this.createFunction(body);
+		      }
+		      current.statements.push(s);
+		    }else{
+		      s = this.visit(s);
+		      body.push(s);
+		      current = null;
+		    }
+		  }
+		  
+		  return e;
+		},
+		
+		
 	};
   
   	return AST;

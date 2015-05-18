@@ -217,8 +217,11 @@ var CallbackHeaven = (function(){
 		},
 
 		arrayExpression: function(e){
-			var elist = this.visitArray(e.elements, ', ');
-			return "[" + elist + "]";
+			var oldIndent = this.indent;
+			this.indent += '\t';
+			var elist = this.visitArray(e.elements, ',\n' + this.indent);
+			this.indent = oldIndent;
+			return "[" + elist + "]\n" + this.indent;
 		},
 
 		newExpression: function(e){
