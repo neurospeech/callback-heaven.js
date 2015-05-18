@@ -253,6 +253,9 @@ var CallbackHeaven = (function(){
 		memberExpression: function(e){
 			var obj = this.visit(e.object);
 			var property = this.visit(e.property);
+			if(e.computed){
+				return obj + "[" + property + "]";
+			}
 			return obj + "." + property;
 		},
 

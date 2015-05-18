@@ -8,9 +8,12 @@ function simple(c){
   }
 }
 
-function chain(){
-  var a = this.modify(
-    this.proces( $wait( $.get('/a') )),
-    $wait( $.get('/b') ));
-  console.log(a);
+function fortest(list){
+  var r = [];
+  for(var i=0;i<list.length;i++){
+    var item = list[i];
+    r.push($wait($.get('/a' + item)));
+  }
+  console.log(r);
+  return r;
 }

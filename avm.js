@@ -138,6 +138,26 @@ var vmCommands = {
       }
     };
     vm.push([s.init, s.test, runFor]);
+  },
+  "do": function(vm,s){
+    s = s[1];
+    function runDo(){
+      var r = vm.value();
+      if(r){
+        vm.push([s.body,s.test,runDo]);
+      }
+    }
+    vm.push([s.test,runDo]);
+  },
+  "do-while": function(vm,s){
+    s = s[1];
+    function runDo(){
+      var r = vm.value();
+      if(r){
+        vm.push([s.body,s.test,runDo]);
+      }
+    }
+    vm.push([s.body,s.test,runDo]);
   }
 };
 

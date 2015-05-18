@@ -464,6 +464,65 @@ var ast = (function(){
 			});
 		},
 		
+		forStatement: function(e){
+			var initPromise = hasPromise(e.init);
+			var testPromise = hasPromise(e.test);
+			var updatePromise = hasPromise(e.update);
+			var bodyPromise = hasPromise(e.body);
+			if(initPromise || testPromise || updatePromise)
+				throw new Error('Waitable promise not supported in init,test and update of for loop');
+			if(!bodyPromise)
+				return e;
+				
+			var s = this.createAsyncStatement("for",{
+				init: this.toFunction(e.init),
+				test: this.toFunction(e.test),
+				update: this.toFunction(e.update),
+				body: this.visit(e.body)
+			});
+			
+			return s;
+		},	
+		
+		whileStatement: function(e){
+			var testPromise = hasPromise(e.test);
+			var bodyPromise = hasPromise(e.body);
+			if(testPromise){
+				throw new Error('Waitable promise not supported test part of while loop');
+			}
+			if(!bodyPromise)
+				return e;
+			var s = this.createAsyncStatement("while",{
+				test: this.toFunction(e.test),
+				body: this.visit(e.body)
+			});
+			return s;
+		},
+		
+		doWhileStatement: function(e){
+			var testPromise = hasPromise(e.test);
+			var bodyPromise = hasPromise(e.body);
+			if(testPromise){
+				throw new Error('Waitable promise not supported test part of while loop');
+			}
+			if(!bodyPromise)
+				return e;
+			var s = this.createAsyncStatement("do-while",{
+				test: this.toFunction(e.test),
+				body: this.visit(e.body)
+			});
+			return s;
+		},
+		
+		forInStatement: function(e){
+			var leftPromise = hasPromise(e.left);
+			var rightPromise = hasPromise(e.right);
+			var bodyPromise = hasPromise(e.body);
+			if(leftPromise || rightPromise || bodyPromise)
+				throw new Error("Waitable promises are not supported in for-in statement");
+			return e;
+		},
+		
 		blockStatement: function(e){
 		  if(!hasPromise(e))
 		    return e;
