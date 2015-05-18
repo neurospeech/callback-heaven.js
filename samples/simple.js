@@ -1,19 +1,8 @@
-var $wait, $ps, promiseResult;
-
-function simple(c){
-    var a = null;
-  if($wait( $.get('/a') )){
-    this.a = $wait($.get('/b'));
-    console.log(this.a);
-  }
-}
-
-function fortest(list){
-  var r = [];
-  for(var i=0;i<list.length;i++){
-    var item = list[i];
-    r.push($wait($.get('/a' + item)));
-  }
-  console.log(r);
-  return r;
-}
+    function testVM(){
+        var countries = $wait($.get('/countries'));
+        for(var i=0; i<countries.length; i++){
+            var country = countries[i];
+            country.states = $wait($.get('/countries/' + country.code));
+        }
+        console.log(JSON.stringify(countries));
+    }
