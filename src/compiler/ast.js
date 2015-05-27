@@ -316,11 +316,7 @@ var ast = (function(){
   							{
   								type: 'thisExpression',
   						},
-  							{
-  								type: 'arrayExpression',
-  								elements: body.body
-  								
-  							}
+  							body
   						]
   					}
   				}
@@ -474,11 +470,13 @@ var ast = (function(){
 			if(!bodyPromise)
 				return e;
 				
+			var body = this.visit(e.body);
+				
 			var s = this.createAsyncStatement("for",{
 				init: this.toFunction(e.init),
 				test: this.toFunction(e.test),
 				update: this.toFunction(e.update),
-				body: this.visit(e.body)
+				body: body
 			});
 			
 			return s;
@@ -528,12 +526,12 @@ var ast = (function(){
 		    return e;
 		  var list = e.body;
 		  
-		  e.body = [{
+		  e = {
 		    type: 'arrayExpression',
 		    elements:[]
-		  }];
+		  };
 		  
-		  var body = e.body[0].elements;
+		  var body = e.elements;
 		  
 		  var current = null;
 		  
