@@ -147,6 +147,13 @@ var ast = (function(){
 			  }
 			}
 			
+			var self = this;
+			walk(tree,function(t){
+				if(/^function/i.test(t.type)){
+					self.functionExpression(t);
+				}
+			});
+			
 			return this.visit(tree);
 			
 		},
@@ -266,9 +273,26 @@ var ast = (function(){
 
 		functionDeclaration: function(e){
 			
+			if(e.transformPromise)
+				return e;
+			
+			var self = this;
+			
+			//debugger;
+			walk(e,function(t){
+				if(t==e)
+					return;
+				if(/^function/i.test(t.type)){
+					console.log('nested function processing');
+					self.functionDeclaration(t);	
+				}
+			});
+			
 			if(!hasPromise(e.body)){
 				return e;
 			}
+			
+			e.transformPromise = true;
 			
 			// remove all variables...
 			var vars = [];

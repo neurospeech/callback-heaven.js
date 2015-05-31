@@ -1,3 +1,5 @@
+(function(){
+
     function testVM(){
         try{
             
@@ -13,3 +15,5 @@
             console.log('something went wrong');
         }
     }
+    
+})();
