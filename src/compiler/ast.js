@@ -505,7 +505,7 @@ var ast = (function(){
 			}
 			if(!bodyPromise)
 				return e;
-			var s = this.createAsyncStatement("do-while",{
+			var s = this.createAsyncStatement("do",{
 				test: this.toFunction(e.test),
 				body: this.visit(e.body)
 			});
