@@ -273,6 +273,17 @@ var ast = (function(){
 			// remove all variables...
 			var vars = [];
 			walk(e, function(t,p){
+				
+				// if(/catchClause/i.test(t.type)){
+				// 	vars.push({
+				// 		type: 'variableDeclarator',
+				// 		id: {
+				// 			type: 'identifier',
+				// 			name: t.param.name
+				// 		}
+				// 	});
+				// }
+				
 			  if(/variableDeclarator$/i.test(t.type)){
 			    vars.push({
 			      type: 'variableDeclarator',
@@ -519,6 +530,30 @@ var ast = (function(){
 			if(leftPromise || rightPromise || bodyPromise)
 				throw new Error("Waitable promises are not supported in for-in statement");
 			return e;
+		},
+		
+		tryStatement: function(e){
+			var bodyPromise = hasPromise(e.block);
+			if(!bodyPromise)
+				return e;
+			var tb = {
+				"try": this.visit(e.block)
+			};
+			if(e.handler){
+				var c = e.handler;
+				tb["catch"] = c;
+				c.type = 'FunctionExpression';
+				c.params = [c.param];
+			}
+			if(e.finalizer){
+				var f = {
+					type: 'FunctionExpression',
+					body: e.finalizer
+				};
+				tb["finally"] = f;
+			}
+			var s = this.createAsyncStatement("try",tb);
+			return s;
 		},
 		
 		blockStatement: function(e){
@@ -832,7 +867,16 @@ var ast = (function(){
 		tryStatement: function(e){
 			var tryBlock = this.visit(e.block);
 			var handler = this.visit(e.handler);
-			return "try" + this.indent +  "\t" + tryBlock + this.indent + "\n" + handler;
+			var finalizer = "";
+			if(e.finalizer){
+				var oldIndent = this.indent;
+				finalizer = "\n" + this.indent;
+				this.indent += "\t";
+				finalizer +=  "finally{\n" + this.indent + this.visit(e.finalizer) + "\n";
+				this.indent = oldIndent;
+				finalizer += this.indent + "}";
+			}
+			return "try" + this.indent +  "\t" + tryBlock + this.indent + "\n" + handler + finalizer;
 		},
 
 		catchClause: function(e){

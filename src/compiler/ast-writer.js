@@ -272,7 +272,16 @@ var CallbackHeaven = (function(){
 		tryStatement: function(e){
 			var tryBlock = this.visit(e.block);
 			var handler = this.visit(e.handler);
-			return "try" + this.indent +  "\t" + tryBlock + this.indent + "\n" + handler;
+			var finalizer = "";
+			if(e.finalizer){
+				var oldIndent = this.indent;
+				finalizer = "\n" + this.indent;
+				this.indent += "\t";
+				finalizer +=  "finally{\n" + this.indent + this.visit(e.finalizer) + "\n";
+				this.indent = oldIndent;
+				finalizer += this.indent + "}";
+			}
+			return "try" + this.indent +  "\t" + tryBlock + this.indent + "\n" + handler + finalizer;
 		},
 
 		catchClause: function(e){
