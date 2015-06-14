@@ -404,7 +404,7 @@ var ast = (function(){
 			return e;
 		},
 		
-		createFunction: function(statementArray){
+		createFunction: function(stmt){
 		  var s = {
 		    type: 'functionExpression',
 		    id: '',
@@ -414,7 +414,7 @@ var ast = (function(){
 		    }
 		  };
 		  s.statements = s.body.body;
-		  if(statementArray) statementArray.push(s);
+		  if(stmt) s.statements.push(stmt);
 		  return s;
 		},
 		
@@ -471,22 +471,27 @@ var ast = (function(){
 			}else{
 				e.test = this.toFunction(e.test);
 			}
+			
 			if(hasPromise(e.consequent)){
 				consequentPromise = true;
 				e.consequent = this.visit(e.consequent);
 			}else{
-				e.consequent = this.toFunction(e.consequent);
+				e.consequent = this.createFunction(e.consequent);
 			}
+			
+			
 			if(e.alternate){
 				if(hasPromise(e.alternate)){
+					alternatePromise = true;
 					e.alternate =  this.visit(e.alternate);
 				}else{
-					e.alternate = this.toFunction(e.alternate);
+					e.alternate =  this.createFunction(e.alternate);
 				}
 			}
 			
 			if(!(testPromise || consequentPromise || alternatePromise))
 				return e;
+			
 			
 			return this.createAsyncStatement("if",{
 				test: e.test,
@@ -600,7 +605,8 @@ var ast = (function(){
 		    var s = ae.current();
 		    if(!hasPromise(s)){
 		      if(!current){
-		        current = this.createFunction(body);
+		        current = this.createFunction();
+		        body.push(current);
 		      }
 		      current.statements.push(s);
 		    }else{

@@ -1,6 +1,6 @@
 {
   "name": "callback-heaven",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Transcode callbacks into synchronous code",
   "homepage": "https://github.com/neurospeech/callback-heaven.js",
   "main": "dist/callback-heaven.js",
